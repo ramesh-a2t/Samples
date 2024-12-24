@@ -398,3 +398,6 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+FileTransferService/appsettings.Development.json
+FileTransferService/appsettings.json
+FileTransferService/Properties/launchSettings.json
