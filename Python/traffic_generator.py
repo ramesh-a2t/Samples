@@ -10,8 +10,8 @@ from azure.servicebus import ServiceBusClient, ServiceBusMessage
 
 # Constants for directories
 VEHICLE_IMAGES_DIR = ""
-OUTPUT_IMAGES_DIR = r"\\WIN02\TollHost\vehicle_images"
-TRXDATA_DIR = r"\\WIN02\TollHost\trxdata"
+OUTPUT_IMAGES_DIR = r"\\WIN03\TollHost\vehicle_images"
+TRXDATA_DIR = r"\\WIN03\TollHost\trxdata"
 os.makedirs(OUTPUT_IMAGES_DIR, exist_ok=True)
 os.makedirs(TRXDATA_DIR, exist_ok=True)
 
@@ -116,7 +116,7 @@ def overlay_plate_info(image, plate_area, plate_number, plate_state, plate_type)
         plate_type_y = plate_area[3] - 12  # At the bottom of the plate area
         draw.text((plate_type_x, plate_type_y), plate_type, fill="black", font=plate_type_font)
 
-def generate_vehicle_images(transaction_id, plate_number, plate_state, plate_type=None, vehicle_type_distribution=None, max_vehicle_images=1):
+def generate_vehicle_images(transaction_id, plate_number, plate_state, plate_type=None, vehicle_type_distribution=None):
     """
     Generate images of vehicles with license plates.
     Includes overview images and a cropped license plate image.
@@ -145,24 +145,37 @@ def generate_vehicle_images(transaction_id, plate_number, plate_state, plate_typ
         vehicle_image_file = f"{transaction_id}_vehicle_{i}.jpg"
         vehicle_image_path = os.path.join(OUTPUT_IMAGES_DIR, vehicle_image_file)
 
-        # Create an overview image
-        vehicle_image_path = os.path.join(VEHICLE_IMAGES_DIR, "vehicle.jpg")  # Replace with actual image
-        img = Image.open(vehicle_image_path).convert("RGB")
+        # Create a new overview image for each iteration
+        img = Image.new("RGB", (800, 600), (random.randint(100, 255), random.randint(100, 255), random.randint(100, 255)))
+        draw = ImageDraw.Draw(img)
 
         # Simulate a vehicle and license plate area
-        plate_area = (250, 450, 450, 500)  # Adjust to match the image
-        overlay_plate_info(img, plate_area, plate_number, plate_state, plate_type)
+        plate_area = (300, 400, 500, 450)  # x0, y0, x1, y1
+        draw.rectangle(plate_area, fill=(240, 240, 240), outline="black")
+
+        # Add full state name at the top center of the plate area
+        state_font = ImageFont.truetype(FONT_PATH, STATE_FONT_SIZE)
+        state_x = plate_area[0] + (plate_area[2] - plate_area[0] - draw.textlength(plate_state["full_name"], font=state_font)) // 2
+        state_y = plate_area[1] + 2
+        draw.text((state_x, state_y), plate_state["full_name"], fill="black", font=state_font)
+
+        # Add plate number in the center of the plate area
+        plate_font = ImageFont.truetype(FONT_PATH, PLATE_FONT_SIZE)
+        plate_x = plate_area[0] + (plate_area[2] - plate_area[0] - draw.textlength(plate_number, font=plate_font)) // 2
+        plate_y = state_y + 12  # Below the state name
+        draw.text((plate_x, plate_y), plate_number, fill="black", font=plate_font)
+
+        # Add plate type at the bottom center of the plate area (if provided)
+        if plate_type:
+            plate_type_font = ImageFont.truetype(FONT_PATH, STATE_FONT_SIZE)
+            plate_type_x = plate_area[0] + (plate_area[2] - plate_area[0] - draw.textlength(plate_type, font=plate_type_font)) // 2
+            plate_type_y = plate_area[3] - 12  # At the bottom of the plate area
+            draw.text((plate_type_x, plate_type_y), plate_type, fill="black", font=plate_type_font)
 
         # Apply random effect
         img = apply_effects(img, effect)
-        
-        # Generate multiple vehicle images (1 to max_vehicle_images)
-        for i in range(1, max_vehicle_images):
-            vehicle_image_file = f"{transaction_id}_vehicle_{i}.jpg"
-            vehicle_image_path = os.path.join(OUTPUT_IMAGES_DIR, vehicle_image_file)
-            img.save(vehicle_image_path)
-            images.append({"image_file": vehicle_image_path, "image_type": "1"}) # image_type 1 = Rear Overview, 2 = Region of Interest (ROI)
-
+        img.save(vehicle_image_path)
+        images.append(vehicle_image_file)  # Append unique filename to array
 
     # Create cropped license plate image (400x100)
     cropped_plate = img.crop(plate_area)
@@ -170,7 +183,9 @@ def generate_vehicle_images(transaction_id, plate_number, plate_state, plate_typ
     cropped_plate_file = f"{transaction_id}_plateroi.jpg"
     cropped_plate_path = os.path.join(OUTPUT_IMAGES_DIR, cropped_plate_file)
     cropped_plate.save(cropped_plate_path)
-    images.append({"image_file": cropped_plate_path, "image_type": "2"})
+
+    # Add cropped plate image to vehicle images
+    images.append(cropped_plate_file)
 
     return images
 
@@ -205,8 +220,7 @@ def generate_traffic_data(start_date, end_date, average_daily_volume, batch_size
             transaction_id,
             plate_number,
             plate_state=plate_state_info,  # Pass the full state dictionary
-            plate_type=plate_types,
-            max_vehicle_images=image_count
+            plate_type=plate_types
         )
 
         # Create record
@@ -258,7 +272,7 @@ def generate_traffic_data(start_date, end_date, average_daily_volume, batch_size
     print(f"Total records generated: {record_count}")
 
 if __name__ == "__main__":
-    start_date = datetime(2024, 12, 18)
+    start_date = datetime(2024, 12, 23)
     end_date = datetime.now()
     average_daily_volume = 10
     generate_traffic_data(start_date, end_date, average_daily_volume)
