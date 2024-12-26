@@ -148,7 +148,6 @@ namespace FileTransferService
             }
         }
 
-
         private async Task ProcessFile(string filePath, string virtualFolder)
         {
             try
@@ -181,20 +180,20 @@ namespace FileTransferService
                     if (_debug)
                     {
                         _logger.LogDebug($"Uploaded file {fileName} in {stopwatch.ElapsedMilliseconds}ms");
+
+                        _telemetryClient.TrackEvent("FileUploaded", new Dictionary<string, string>
+                        {
+                            { "FileName", fileName },
+                            { "BlobPath", blobPath }
+                        });
                     }
 
-                    _logger.LogInformation($"Successfully uploaded {fileName} to {blobPath}");
-                    _telemetryClient.TrackEvent("FileUploaded", new Dictionary<string, string>
-                    {
-                        { "FileName", fileName },
-                        { "BlobPath", blobPath }
-                    });
 
                     if (virtualFolder == "trxdata")
                     {
                         File.Move(filePath, Path.Combine(_archiveFolder, Path.GetFileName(filePath)));
                     }
-                    else 
+                    else
                     {
                         File.Delete(filePath);
                     }
@@ -209,7 +208,6 @@ namespace FileTransferService
                 _telemetryClient.TrackException(ex);
             }
         }
-
 
         public override Task StopAsync(CancellationToken cancellationToken)
         {
