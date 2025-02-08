@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "TrxReceiver": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7017",
+      "environmentVariables": {
+        "AZURE_TENANT_ID": "0df9a1e4-ce71-4c39-83fd-3bd798368c25"
+      }
+    }
+  }
+}
